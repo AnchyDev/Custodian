@@ -1,4 +1,5 @@
-﻿using Discord.WebSocket;
+﻿using Discord;
+using Discord.WebSocket;
 
 using System.Text;
 using System.Text.Json;
@@ -30,7 +31,7 @@ namespace Custodian.Commands
             {
                 await command.ModifyOriginalResponseAsync(p =>
                 {
-                    p.Content = catApi[0].Url;
+                    p.Embed = new EmbedBuilder().WithImageUrl(catApi[0].Url).Build();
                 });
                 Console.WriteLine(">> Cat found.");
             }
