@@ -1,5 +1,6 @@
-﻿using Custodian.Config;
-using Custodian.Models;
+﻿using Custodian.Commands;
+using Custodian.Config;
+
 using Discord;
 using Discord.WebSocket;
 
@@ -12,9 +13,9 @@ namespace Custodian.Bot
     public class BotCustodian
     {
         private readonly DiscordSocketClient _client;
-        private HttpClient _httpClient;
         private BotConfig _config;
         private List<ulong> trackedChannels;
+        private Dictionary<string, ISlashCommand> commands;
 
         public BotCustodian(BotConfig config)
         {
@@ -23,9 +24,12 @@ namespace Custodian.Bot
                 GatewayIntents = GatewayIntents.All
             };
             _client = new DiscordSocketClient(clientConfig);
-            _httpClient = new HttpClient();
             _config = config;
             trackedChannels = new List<ulong>();
+            commands = new Dictionary<string, ISlashCommand>();
+
+            var cmdCat = new SlashCommandCat();
+            commands.Add(cmdCat.Command, cmdCat);
 
             _client.Ready += _client_Ready;
             _client.MessageReceived += _client_MessageReceived;
@@ -35,45 +39,36 @@ namespace Custodian.Bot
 
         private async Task _client_SlashCommandExecuted(SocketSlashCommand arg)
         {
-            if(arg.CommandName.Equals("cat"))
+            if(commands.ContainsKey(arg.CommandName))
             {
-                Console.WriteLine("Fetching cat from api..");
-                await arg.DeferAsync();
-                var response = await _httpClient.GetStringAsync("https://api.thecatapi.com/v1/images/search");
-                using var reader = new MemoryStream(Encoding.UTF8.GetBytes(response));
-                var catApi = await JsonSerializer.DeserializeAsync<List<CatApi>>(reader);
-
-                if (catApi[0] != null)
+                if(commands.TryGetValue(arg.CommandName, out var command))
                 {
-                    await arg.ModifyOriginalResponseAsync(p =>
-                    {
-                        p.Content = catApi[0].Url;
-                    });
-                    Console.WriteLine(">> Cat found.");
-                }
-                else
-                {
-                    await arg.ModifyOriginalResponseAsync(p =>
-                    {
-                        p.Content = "Sorry! Failed to load a :cat:";
-                    });
-                    Console.WriteLine(">> Failed to load cat.");
+                    await command.OnSlashCommandAsync(arg);
                 }
             }
         }
 
         private async Task _client_Ready()
         {
-            Console.WriteLine(">> Bot ready for interaction.");
+            List<SlashCommandBuilder> builders = new List<SlashCommandBuilder>();
+            foreach(var command in commands.Values)
+            {
+                var builder = new SlashCommandBuilder();
+                builder.WithName(command.Command);
+                builder.WithDescription(command.Description);
+                builders.Add(builder);
 
-            var cmd = new SlashCommandBuilder();
-            cmd.WithName("cat");
-            cmd.WithDescription("Retrieves a picture of a cat.");
+            }
 
             foreach(var guild in _client.Guilds)
             {
-                await guild.CreateApplicationCommandAsync(cmd.Build());
+                foreach(var builder in builders)
+                {
+                    await guild.CreateApplicationCommandAsync(builder.Build());
+                }
             }
+
+            Console.WriteLine(">> Bot ready for interaction.");
         }
 
         private async Task _client_UserVoiceStateUpdated(SocketUser arg1, SocketVoiceState arg2, SocketVoiceState arg3)
