@@ -27,7 +27,7 @@ namespace Custodian.Commands
             using var reader = new MemoryStream(Encoding.UTF8.GetBytes(response));
             var catApi = await JsonSerializer.DeserializeAsync<List<CatApi>>(reader);
 
-            if (catApi[0] != null)
+            if (catApi != null && catApi[0] != null)
             {
                 await command.ModifyOriginalResponseAsync(p =>
                 {
