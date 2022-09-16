@@ -4,10 +4,6 @@ using Custodian.Config;
 using Discord;
 using Discord.WebSocket;
 
-using System;
-using System.Text;
-using System.Text.Json;
-
 namespace Custodian.Bot
 {
     public class BotCustodian
@@ -66,7 +62,6 @@ namespace Custodian.Bot
                 builder.WithName(command.Command);
                 builder.WithDescription(command.Description);
                 builders.Add(builder);
-
             }
 
             foreach(var guild in _client.Guilds)
