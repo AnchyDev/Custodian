@@ -80,6 +80,22 @@ namespace Custodian.Bot
             var prevChannel = arg2.VoiceChannel;
             var currChannel = arg3.VoiceChannel;
 
+            SocketGuild guild = null;
+
+            if(prevChannel != null)
+            {
+                guild = prevChannel.Guild;
+            }
+            else if(currChannel != null)
+            {
+                guild = currChannel.Guild;
+            }
+            else
+            {
+                Console.WriteLine(">> Failed to fetch guild in UserVoiceStateUpdated.");
+                return;
+            }
+
             if(prevChannel != null &&
                 trackedChannels.Contains(prevChannel.Id) &&
                 prevChannel.ConnectedUsers.Count == 0)
@@ -95,7 +111,7 @@ namespace Custodian.Bot
                 return;
             }
 
-            if (currChannel.Id != _config.DynamicVoiceChannelId)
+            if (currChannel.Id != _config.GuildConfigs[guild.Id].DynamicVoiceChannelId)
             {
                 return;
             }
@@ -105,7 +121,7 @@ namespace Custodian.Bot
             int currentChannelCount = trackedChannels.Count + 1;
             var newChannel = await currChannel.Guild.CreateVoiceChannelAsync($"Voice Channel {currentChannelCount}", p =>
             {
-                p.CategoryId = _config.DynamicVoiceCategoryId;
+                p.CategoryId = _config.GuildConfigs[guild.Id].DynamicVoiceCategoryId;
             });
 
             trackedChannels.Add(newChannel.Id);

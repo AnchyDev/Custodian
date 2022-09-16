@@ -12,17 +12,14 @@ namespace Custodian.Config
         [JsonPropertyName("BOT_TOKEN")]
         public string Token { get; set; }
 
-        [JsonPropertyName("DYNAMIC_VOICE_CAT_ID")]
-        public ulong DynamicVoiceCategoryId { get; set; }
-
-        [JsonPropertyName("DYNAMIC_VOICE_CHAN_ID")]
-        public ulong DynamicVoiceChannelId { get; set; }
+        [JsonPropertyName("GUILD_CONFIGS")]
+        public Dictionary<ulong, GuildConfig> GuildConfigs { get; set; }
 
         public BotConfig()
         {
             Token = "BOT_TOKEN_HERE";
-            DynamicVoiceCategoryId = 0;
-            DynamicVoiceChannelId = 0;
+            GuildConfigs = new Dictionary<ulong, GuildConfig>();
+            GuildConfigs.Add(0, new GuildConfig());
         }
     }
 }
