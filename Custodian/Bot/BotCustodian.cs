@@ -28,9 +28,18 @@ namespace Custodian.Bot
             trackedChannels = new List<ulong>();
             commands = new Dictionary<string, ISlashCommand>();
 
+            RegisterCommands();
+            SubscribeToEvents();
+        }
+
+        private void RegisterCommands()
+        {
             var cmdCat = new SlashCommandCat();
             commands.Add(cmdCat.Command, cmdCat);
+        }
 
+        private void SubscribeToEvents()
+        {
             _client.Ready += _client_Ready;
             _client.MessageReceived += _client_MessageReceived;
             _client.UserVoiceStateUpdated += _client_UserVoiceStateUpdated;
