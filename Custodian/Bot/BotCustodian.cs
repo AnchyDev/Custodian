@@ -1,14 +1,18 @@
 ﻿using Custodian.Config;
+using Custodian.Models;
 using Discord;
 using Discord.WebSocket;
 
 using System;
+using System.Text;
+using System.Text.Json;
 
 namespace Custodian.Bot
 {
     public class BotCustodian
     {
         private readonly DiscordSocketClient _client;
+        private HttpClient _httpClient;
         private BotConfig _config;
         private List<ulong> trackedChannels;
 
@@ -19,6 +23,7 @@ namespace Custodian.Bot
                 GatewayIntents = GatewayIntents.All
             };
             _client = new DiscordSocketClient(clientConfig);
+            _httpClient = new HttpClient();
             _config = config;
             trackedChannels = new List<ulong>();
 
@@ -30,9 +35,30 @@ namespace Custodian.Bot
 
         private async Task _client_SlashCommandExecuted(SocketSlashCommand arg)
         {
-            if(arg.CommandName.Equals("test"))
+            if(arg.CommandName.Equals("cat"))
             {
-                await arg.RespondAsync("Hello!");
+                Console.WriteLine("Fetching cat from api..");
+                await arg.DeferAsync();
+                var response = await _httpClient.GetStringAsync("https://api.thecatapi.com/v1/images/search");
+                using var reader = new MemoryStream(Encoding.UTF8.GetBytes(response));
+                var catApi = await JsonSerializer.DeserializeAsync<List<CatApi>>(reader);
+
+                if (catApi[0] != null)
+                {
+                    await arg.ModifyOriginalResponseAsync(p =>
+                    {
+                        p.Content = catApi[0].Url;
+                    });
+                    Console.WriteLine(">> Cat found.");
+                }
+                else
+                {
+                    await arg.ModifyOriginalResponseAsync(p =>
+                    {
+                        p.Content = "Sorry! Failed to load a :cat:";
+                    });
+                    Console.WriteLine(">> Failed to load cat.");
+                }
             }
         }
 
@@ -41,8 +67,8 @@ namespace Custodian.Bot
             Console.WriteLine(">> Bot ready for interaction.");
 
             var cmd = new SlashCommandBuilder();
-            cmd.WithName("test");
-            cmd.WithDescription("This is a test command.");
+            cmd.WithName("cat");
+            cmd.WithDescription("Retrieves a picture of a cat.");
 
             foreach(var guild in _client.Guilds)
             {
@@ -90,7 +116,10 @@ namespace Custodian.Bot
 
         private async Task _client_MessageReceived(SocketMessage arg)
         {
-            Console.WriteLine($"[{arg.Channel.Name}] [{arg.Author.Username}]: {arg.CleanContent}");
+            if(!arg.Author.IsBot)
+            {
+                Console.WriteLine($"[{arg.Channel.Name}] [{arg.Author.Username}]: {arg.CleanContent}");
+            }
         }
 
         public async Task StartAsync()
