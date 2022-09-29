@@ -10,7 +10,7 @@ namespace Custodian.Bot
 {
     public class BotCustodian
     {
-        private DiscordSocketClient _client;
+        private DiscordSocketClient? client;
         private BotConfig config;
         
         private Dictionary<string, ISlashCommand> commands;
@@ -18,13 +18,14 @@ namespace Custodian.Bot
 
         private ILogger logger;
 
+        private SocketGuild? guild;
+
         public BotCustodian(BotConfig config, ILogger logger)
         {
             this.config = config;
             this.logger = logger;
 
             SetupClient();
-            RegisterCommands();
             SubscribeToEvents();
             SetStatus();
         }
@@ -36,20 +37,20 @@ namespace Custodian.Bot
                 GatewayIntents = GatewayIntents.All
             };
 
-            _client = new DiscordSocketClient(clientConfig);
+            client = new DiscordSocketClient(clientConfig);
+            guild = client.Guilds.FirstOrDefault(g => g.Id == config.GuildId);
         }
 
         private void SetStatus()
         {
-            _client.SetStatusAsync(UserStatus.Online);
-            _client.SetActivityAsync(new Game(" for interactions.", ActivityType.Watching, ActivityProperties.None));
+            client.SetStatusAsync(UserStatus.Online);
+            client.SetActivityAsync(new Game(" for interactions.", ActivityType.Watching, ActivityProperties.None));
         }
 
         private async Task RegisterModules()
         {
             modules = new List<IModule>();
 
-            var guild = _client.Guilds.FirstOrDefault(g => g.Id == config.GuildId);
             if(guild == null)
             {
                 await logger.LogAsync(LogLevel.ERROR, "[RegisterModules] Guild is null!!");
@@ -75,7 +76,7 @@ namespace Custodian.Bot
             }
         }
 
-        private void RegisterCommands()
+        private async Task RegisterCommands()
         {
             commands = new Dictionary<string, ISlashCommand>();
             //var cmdCat = new SlashCommandCat();
@@ -85,15 +86,40 @@ namespace Custodian.Bot
             //commands.Add(cmdCompile.Command, cmdCompile);
             //var cmdInfo = new SlashCommandInfo();
             //commands.Add(cmdInfo.Command, cmdInfo);
+
+            List<SlashCommandBuilder> builders = new List<SlashCommandBuilder>();
+            foreach (var command in commands.Values)
+            {
+                var builder = new SlashCommandBuilder();
+                builder.WithName(command.Command);
+                builder.WithDescription(command.Description);
+                if (command.Options != null && command.Options.Count > 0)
+                {
+                    foreach (var option in command.Options)
+                    {
+                        builder.AddOption(option.Name, option.Type, option.Description, option.IsRequired, option.IsDefault, option.IsAutoComplete);
+                    }
+                }
+                builders.Add(builder);
+            }
+
+            foreach (var builder in builders)
+            {
+                await guild.CreateApplicationCommandAsync(builder.Build());
+            }
+
         }
 
         private void SubscribeToEvents()
         {
-            _client.Ready += _client_Ready;
-            _client.MessageReceived += _client_MessageReceived;
-            _client.UserVoiceStateUpdated += _client_UserVoiceStateUpdated;
-            _client.SlashCommandExecuted += _client_SlashCommandExecuted;
-            _client.SelectMenuExecuted += _client_SelectMenuExecuted;
+            if (client != null)
+            {
+                client.Ready += _client_Ready;
+                client.MessageReceived += _client_MessageReceived;
+                client.UserVoiceStateUpdated += _client_UserVoiceStateUpdated;
+                client.SlashCommandExecuted += _client_SlashCommandExecuted;
+                client.SelectMenuExecuted += _client_SelectMenuExecuted;
+            }
         }
 
         private async Task _client_SelectMenuExecuted(SocketMessageComponent messageComp)
@@ -120,30 +146,8 @@ namespace Custodian.Bot
         {
             try
             {
-                List<SlashCommandBuilder> builders = new List<SlashCommandBuilder>();
-                foreach (var command in commands.Values)
-                {
-                    var builder = new SlashCommandBuilder();
-                    builder.WithName(command.Command);
-                    builder.WithDescription(command.Description);
-                    if (command.Options != null && command.Options.Count > 0)
-                    {
-                        foreach (var option in command.Options)
-                        {
-                            builder.AddOption(option.Name, option.Type, option.Description, option.IsRequired, option.IsDefault, option.IsAutoComplete);
-                        }
-                    }
-                    builders.Add(builder);
-                }
-
-                var guild = _client.Guilds.First(g => g.Id == config.GuildId);
-
-                foreach (var builder in builders)
-                {
-                    await guild.CreateApplicationCommandAsync(builder.Build());
-                }
-
                 await RegisterModules();
+                await RegisterCommands();
 
                 await logger.LogAsync(LogLevel.INFO, ">> Bot ready for interaction.");
             }
@@ -181,10 +185,10 @@ namespace Custodian.Bot
         public async Task StartAsync()
         {
             await logger.LogAsync(LogLevel.INFO, "Logging in..");
-            await _client.LoginAsync(Discord.TokenType.Bot, config.Token);
+            await client.LoginAsync(Discord.TokenType.Bot, config.Token);
             await logger.LogAsync(LogLevel.INFO, ">> Logged in.");
             await logger.LogAsync(LogLevel.INFO, "Starting bot..");
-            await _client.StartAsync();
+            await client.StartAsync();
             await logger.LogAsync(LogLevel.INFO, ">> Bot started.");
 
             await Task.Delay(Timeout.Infinite);
