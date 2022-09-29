@@ -24,13 +24,9 @@ namespace Custodian.Bot
         {
             this.config = config;
             this.logger = logger;
-
-            SetupClient();
-            SubscribeToEvents();
-            SetStatus();
         }
 
-        private void SetupClient()
+        public async Task SetupAsync()
         {
             var clientConfig = new DiscordSocketConfig()
             {
@@ -38,13 +34,18 @@ namespace Custodian.Bot
             };
 
             client = new DiscordSocketClient(clientConfig);
+            client.Ready += _client_Ready;
+            client.MessageReceived += _client_MessageReceived;
+            client.UserVoiceStateUpdated += _client_UserVoiceStateUpdated;
+            client.SlashCommandExecuted += _client_SlashCommandExecuted;
+            client.SelectMenuExecuted += _client_SelectMenuExecuted;
             guild = client.Guilds.FirstOrDefault(g => g.Id == config.GuildId);
         }
 
-        private void SetStatus()
+        private async Task SetStatus()
         {
-            client.SetStatusAsync(UserStatus.Online);
-            client.SetActivityAsync(new Game(" for interactions.", ActivityType.Watching, ActivityProperties.None));
+            await client.SetStatusAsync(UserStatus.Online);
+            await client.SetActivityAsync(new Game(" for interactions.", ActivityType.Watching, ActivityProperties.None));
         }
 
         private async Task RegisterModules()
@@ -110,18 +111,6 @@ namespace Custodian.Bot
 
         }
 
-        private void SubscribeToEvents()
-        {
-            if (client != null)
-            {
-                client.Ready += _client_Ready;
-                client.MessageReceived += _client_MessageReceived;
-                client.UserVoiceStateUpdated += _client_UserVoiceStateUpdated;
-                client.SlashCommandExecuted += _client_SlashCommandExecuted;
-                client.SelectMenuExecuted += _client_SelectMenuExecuted;
-            }
-        }
-
         private async Task _client_SelectMenuExecuted(SocketMessageComponent messageComp)
         {
             foreach(var module in modules)
@@ -148,6 +137,7 @@ namespace Custodian.Bot
             {
                 await RegisterModules();
                 await RegisterCommands();
+                await SetStatus();
 
                 await logger.LogAsync(LogLevel.INFO, ">> Bot ready for interaction.");
             }
