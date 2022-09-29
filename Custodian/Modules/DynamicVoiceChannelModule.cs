@@ -59,10 +59,10 @@ namespace Custodian.Modules
                 trackedChannels.Contains(prevVoice.Id) &&
                 prevVoice.ConnectedUsers.Count == 0)
             {
-                Console.WriteLine($"No users left in channel '{prevVoice.Name}', deleting..");
+                await logger.LogAsync(LogLevel.INFO, $"No users left in channel '{prevVoice.Name}', deleting..");
                 trackedChannels.Remove(prevVoice.Id);
                 await prevVoice.DeleteAsync();
-                Console.WriteLine(">> Deleted channel.");
+                await logger.LogAsync(LogLevel.INFO, ">> Deleted channel.");
             }
 
             if (newVoice == null)
@@ -75,7 +75,7 @@ namespace Custodian.Modules
                 return;
             }
 
-            Console.WriteLine("Detected user in voice channel, moving them to new channel.");
+            await logger.LogAsync(LogLevel.INFO, "Detected user in voice channel, moving them to new channel.");
 
             int currentChannelCount = trackedChannels.Count + 1;
             var freshChannel = await newVoice.Guild.CreateVoiceChannelAsync($"Voice Channel {currentChannelCount}", p =>
