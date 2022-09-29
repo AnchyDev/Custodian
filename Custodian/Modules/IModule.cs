@@ -36,6 +36,6 @@ namespace Custodian.Modules
         public virtual Task OnDirectMessageReceivedAsync(SocketMessage message) => Task.CompletedTask;
         public virtual Task OnSelectMenuExecutedAsync(SocketMessageComponent messageComp) => Task.CompletedTask;
         public virtual Task OnUserVoiceStateUpdated(SocketUser user, SocketVoiceState prevChannel, SocketVoiceState newChannel) => Task.CompletedTask;
-        public virtual Task<bool> LoadConfig() => (Task<bool>)Task.CompletedTask;
+        public virtual Task<bool> LoadConfig() => Task.FromResult<bool>(true);
     }
 }
