@@ -61,8 +61,17 @@ namespace Custodian.Bot
 
             foreach(var module in modules)
             {
-                await module.LoadConfig();
-                await logger.LogAsync(LogLevel.INFO, $"Loaded module '{module.Name}'.");
+                var result = await module.LoadConfig();
+
+                if(result)
+                {
+                    await logger.LogAsync(LogLevel.INFO, $"Loaded module '{module.Name}'.");
+                }
+                else
+                {
+                    await logger.LogAsync(LogLevel.INFO, $"Failed to load config, unloading module '{module.Name}'.");
+                    modules.Remove(module);
+                }
             }
         }
 
