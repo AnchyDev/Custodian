@@ -33,9 +33,9 @@ namespace Custodian.Modules
             }
         }
 
-        public virtual async Task OnDirectMessageReceivedAsync(SocketMessage message) { }
-        public virtual async Task OnSelectMenuExecutedAsync(SocketMessageComponent messageComp) { }
-        public virtual async Task OnUserVoiceStateUpdated(SocketUser user, SocketVoiceState prevChannel, SocketVoiceState newChannel) { }
-        public virtual async Task LoadConfig() { }
+        public virtual Task OnDirectMessageReceivedAsync(SocketMessage message) => Task.CompletedTask;
+        public virtual Task OnSelectMenuExecutedAsync(SocketMessageComponent messageComp) => Task.CompletedTask;
+        public virtual Task OnUserVoiceStateUpdated(SocketUser user, SocketVoiceState prevChannel, SocketVoiceState newChannel) => Task.CompletedTask;
+        public virtual Task LoadConfig() => Task.CompletedTask;
     }
 }
