@@ -26,7 +26,7 @@ namespace Custodian
             await bot.StartAsync();
         }
 
-        private async Task<BotConfig> LoadConfig()
+        private async Task<BotConfig?> LoadConfig()
         {
             var path = @"./config";
             var config = @"./config.json";

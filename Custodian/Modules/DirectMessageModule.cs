@@ -1,4 +1,5 @@
-﻿using Discord;
+﻿using Custodian.Logging;
+using Discord;
 using Discord.WebSocket;
 
 using System.Text;
@@ -17,19 +18,31 @@ namespace Custodian.Modules
         public override string Name { get => "DirectMessage"; }
         public override string Description { get => "Allows users to complete actions in a direct message channel with the bot."; }
 
-        private ReportConfig _config;
-        private SocketGuild _guild;
+        private ReportConfig config;
+        private SocketGuild guild;
+        private ILogger logger;
         private List<ulong> usersReporting;
 
-        public DirectMessageModule(SocketGuild guild)
+        public DirectMessageModule(SocketGuild guild, ILogger logger)
         {
-            _guild = guild;
+            this.guild = guild;
+            this.logger = logger;
             usersReporting = new List<ulong>();
         }
 
-        public override async Task LoadConfig()
+        public override async Task<bool> LoadConfig()
         {
-            _config = await GetConfig<ReportConfig>();
+            var _config = await GetConfig<ReportConfig>();
+            if(_config != null)
+            {
+                config = _config;
+                return true;
+            }
+            else
+            {
+                await logger.LogAsync(LogLevel.ERROR, "Failed to load config for module '{Name}'.");
+                return false;
+            }
         }
 
         public override async Task OnDirectMessageReceivedAsync(SocketMessage message)
@@ -39,7 +52,7 @@ namespace Custodian.Modules
                 usersReporting.Remove(message.Author.Id);
                 await message.Channel.SendMessageAsync(text: "Your message has been logged.");
 
-                var forum = _guild.GetForumChannel(_config.ReportForumChannelId);
+                var forum = guild.GetForumChannel(config.ReportForumChannelId);
                 var threads = await forum.GetActiveThreadsAsync();
                 var thread = threads.FirstOrDefault(t => t.Name.Split(' ')[1] == $"{message.Author.Id}");
 

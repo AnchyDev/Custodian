@@ -1,4 +1,5 @@
-﻿using Discord.WebSocket;
+﻿using Custodian.Logging;
+using Discord.WebSocket;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,19 +23,31 @@ namespace Custodian.Modules
         public override string Name { get => "DynamicVoiceChannel"; }
         public override string Description { get => "Allows users to create their own voice channels by joining a specific channel."; }
 
-        private DynamicVoiceChannelConfig _config;
-        private SocketGuild _guild;
+        private DynamicVoiceChannelConfig config;
+        private SocketGuild guild;
+        private ILogger logger;
         private List<ulong> trackedChannels;
 
-        public DynamicVoiceChannelModule(SocketGuild guild)
+        public DynamicVoiceChannelModule(SocketGuild guild, ILogger logger)
         {
-            _guild = guild;
+            this.guild = guild;
+            this.logger = logger;
             trackedChannels = new List<ulong>();
         }
 
-        public override async Task LoadConfig()
+        public override async Task<bool> LoadConfig()
         {
-            _config = await GetConfig<DynamicVoiceChannelConfig>();
+            var _config = await GetConfig<DynamicVoiceChannelConfig>();
+            if (_config != null)
+            {
+                config = _config;
+                return true;
+            }
+            else
+            {
+                await logger.LogAsync(LogLevel.ERROR, "Failed to load config for module '{Name}'.");
+                return false;
+            }
         }
 
         public override async Task OnUserVoiceStateUpdated(SocketUser user, SocketVoiceState prevChannel, SocketVoiceState newChannel) 
@@ -57,7 +70,7 @@ namespace Custodian.Modules
                 return;
             }
 
-            if (newVoice.Id != _config.DynamicVoiceChannelId)
+            if (newVoice.Id != config.DynamicVoiceChannelId)
             {
                 return;
             }
@@ -67,7 +80,7 @@ namespace Custodian.Modules
             int currentChannelCount = trackedChannels.Count + 1;
             var freshChannel = await newVoice.Guild.CreateVoiceChannelAsync($"Voice Channel {currentChannelCount}", p =>
             {
-                p.CategoryId = _config.DynamicVoiceCategoryId;
+                p.CategoryId = config.DynamicVoiceCategoryId;
             });
 
             trackedChannels.Add(freshChannel.Id);

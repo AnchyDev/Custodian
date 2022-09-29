@@ -56,8 +56,8 @@ namespace Custodian.Bot
                 return;
             }
 
-            modules.Add(new DirectMessageModule(guild));
-            modules.Add(new DynamicVoiceChannelModule(guild));
+            modules.Add(new DirectMessageModule(guild, logger));
+            modules.Add(new DynamicVoiceChannelModule(guild, logger));
 
             foreach(var module in modules)
             {
