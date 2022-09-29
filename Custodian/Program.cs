@@ -37,7 +37,7 @@ namespace Custodian
                 Directory.CreateDirectory(path);
             }
 
-            BotConfig _config;
+            BotConfig? _config;
 
             Console.WriteLine("Loading config.json..");
             if (File.Exists(fullPath))
