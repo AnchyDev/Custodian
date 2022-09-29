@@ -26,7 +26,7 @@ namespace Custodian.Bot
             this.logger = logger;
         }
 
-        public async Task SetupAsync()
+        public async Task<bool> SetupAsync()
         {
             var clientConfig = new DiscordSocketConfig()
             {
@@ -34,12 +34,31 @@ namespace Custodian.Bot
             };
 
             client = new DiscordSocketClient(clientConfig);
+
+            if(client == null)
+            {
+                await logger.LogAsync(LogLevel.ERROR, ">> Discord Socket Client is null, exiting..");
+                return false;
+            }
+
+            await logger.LogAsync(LogLevel.INFO, "Subscribing to 'Ready' event.");
             client.Ready += _client_Ready;
+
+            await logger.LogAsync(LogLevel.INFO, "Subscribing to 'MessageReceived' event.");
             client.MessageReceived += _client_MessageReceived;
+
+            await logger.LogAsync(LogLevel.INFO, "Subscribing to 'UserVoiceStateUpdated' event.");
             client.UserVoiceStateUpdated += _client_UserVoiceStateUpdated;
+
+            await logger.LogAsync(LogLevel.INFO, "Subscribing to 'SlashCommandExecuted' event.");
             client.SlashCommandExecuted += _client_SlashCommandExecuted;
+
+            await logger.LogAsync(LogLevel.INFO, "Subscribing to 'ReadyMenuExecuted' event.");
             client.SelectMenuExecuted += _client_SelectMenuExecuted;
-            guild = client.Guilds.FirstOrDefault(g => g.Id == config.GuildId);
+
+            await RegisterModules();
+
+            return true;
         }
 
         private async Task SetStatus()
@@ -52,26 +71,27 @@ namespace Custodian.Bot
         {
             modules = new List<IModule>();
 
-            if(guild == null)
-            {
-                await logger.LogAsync(LogLevel.ERROR, "[RegisterModules] Guild is null!!");
-                return;
-            }
-
             modules.Add(new DirectMessageModule(guild, logger));
             modules.Add(new DynamicVoiceChannelModule(guild, logger));
 
-            foreach(var module in modules)
+            if(modules.Count < 1)
+            {
+                return;
+            }
+
+            await logger.LogAsync(LogLevel.INFO, $"Registering '{modules.Count}' module(s).");
+
+            foreach (var module in modules)
             {
                 var result = await module.LoadConfig();
 
                 if(result)
                 {
-                    await logger.LogAsync(LogLevel.INFO, $"Loaded module '{module.Name}'.");
+                    await logger.LogAsync(LogLevel.INFO, $">> Loaded module '{module.Name}'.");
                 }
                 else
                 {
-                    await logger.LogAsync(LogLevel.INFO, $"Failed to load config, unloading module '{module.Name}'.");
+                    await logger.LogAsync(LogLevel.INFO, $">> Failed to load config, unloading module '{module.Name}'.");
                     modules.Remove(module);
                 }
             }
@@ -80,13 +100,18 @@ namespace Custodian.Bot
         private async Task RegisterCommands()
         {
             commands = new Dictionary<string, ISlashCommand>();
-            //var cmdCat = new SlashCommandCat();
-            //commands.Add(cmdCat.Command, cmdCat);
-            //
+
+            var cmdCat = new SlashCommandCat();
+            commands.Add(cmdCat.Command, cmdCat);
+            
             //var cmdCompile = new SlashCommandCompile();
             //commands.Add(cmdCompile.Command, cmdCompile);
             //var cmdInfo = new SlashCommandInfo();
             //commands.Add(cmdInfo.Command, cmdInfo);
+            if(commands.Count < 1)
+            {
+                return;
+            }
 
             List<SlashCommandBuilder> builders = new List<SlashCommandBuilder>();
             foreach (var command in commands.Values)
@@ -104,9 +129,12 @@ namespace Custodian.Bot
                 builders.Add(builder);
             }
 
+            await logger.LogAsync(LogLevel.INFO, $"Registering '{builders.Count}' command(s).");
+
             foreach (var builder in builders)
             {
                 await guild.CreateApplicationCommandAsync(builder.Build());
+                await logger.LogAsync(LogLevel.INFO, $">> Command '{builder.Name}' registered.");
             }
 
         }
@@ -135,7 +163,14 @@ namespace Custodian.Bot
         {
             try
             {
-                await RegisterModules();
+                guild = client.Guilds.FirstOrDefault(g => g.Id == config.GuildId);
+
+                if (guild == null)
+                {
+                    await logger.LogAsync(LogLevel.ERROR, ">> Guild is null, cannot continue..");
+                    return;
+                }
+
                 await RegisterCommands();
                 await SetStatus();
 

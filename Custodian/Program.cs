@@ -23,8 +23,10 @@ namespace Custodian
             var logger = new LoggerConsole();
             logger.LogLevel = config.LogLevel;
             var bot = new BotCustodian(config, logger);
-            await bot.SetupAsync();
-            await bot.StartAsync();
+            if (await bot.SetupAsync())
+            {
+                await bot.StartAsync();
+            }
         }
 
         private async Task<BotConfig?> LoadConfig()
