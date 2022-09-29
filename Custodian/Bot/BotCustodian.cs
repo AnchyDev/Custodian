@@ -1,5 +1,7 @@
 ﻿using Custodian.Commands;
 using Custodian.Config;
+using Custodian.Logging;
+using Custodian.Modules;
 
 using Discord;
 using Discord.WebSocket;
@@ -8,30 +10,72 @@ namespace Custodian.Bot
 {
     public class BotCustodian
     {
-        private readonly DiscordSocketClient _client;
-        private BotConfig _config;
-        private List<ulong> trackedChannels;
+        private DiscordSocketClient _client;
+        private BotConfig config;
+        
         private Dictionary<string, ISlashCommand> commands;
+        private List<IModule> modules;
 
-        public BotCustodian(BotConfig config)
+        private ILogger logger;
+
+        public BotCustodian(BotConfig config, ILogger logger)
+        {
+            this.config = config;
+            this.logger = logger;
+
+            SetupClient();
+            RegisterCommands();
+            SubscribeToEvents();
+            SetStatus();
+        }
+
+        private void SetupClient()
         {
             var clientConfig = new DiscordSocketConfig()
             {
                 GatewayIntents = GatewayIntents.All
             };
-            _client = new DiscordSocketClient(clientConfig);
-            _config = config;
-            trackedChannels = new List<ulong>();
-            commands = new Dictionary<string, ISlashCommand>();
 
-            RegisterCommands();
-            SubscribeToEvents();
+            _client = new DiscordSocketClient(clientConfig);
+        }
+
+        private void SetStatus()
+        {
+            _client.SetStatusAsync(UserStatus.Online);
+            _client.SetActivityAsync(new Game(" for interactions.", ActivityType.Watching, ActivityProperties.None));
+        }
+
+        private async Task RegisterModules()
+        {
+            modules = new List<IModule>();
+
+            var guild = _client.Guilds.FirstOrDefault(g => g.Id == config.GuildId);
+            if(guild == null)
+            {
+                await logger.LogAsync(LogLevel.ERROR, "[RegisterModules] Guild is null!!");
+                return;
+            }
+
+            modules.Add(new DirectMessageModule(guild));
+            modules.Add(new DynamicVoiceChannelModule(guild));
+
+            foreach(var module in modules)
+            {
+                await module.LoadConfig();
+                await logger.LogAsync(LogLevel.INFO, $"Loaded module '{module.Name}'.");
+            }
         }
 
         private void RegisterCommands()
         {
-            var cmdCat = new SlashCommandCat();
-            commands.Add(cmdCat.Command, cmdCat);
+            commands = new Dictionary<string, ISlashCommand>();
+            //var cmdCat = new SlashCommandCat();
+            //commands.Add(cmdCat.Command, cmdCat);
+            //
+            //var cmdCompile = new SlashCommandCompile();
+            //commands.Add(cmdCompile.Command, cmdCompile);
+            //var cmdInfo = new SlashCommandInfo();
+            //commands.Add(cmdInfo.Command, cmdInfo);
         }
 
         private void SubscribeToEvents()
@@ -40,6 +84,15 @@ namespace Custodian.Bot
             _client.MessageReceived += _client_MessageReceived;
             _client.UserVoiceStateUpdated += _client_UserVoiceStateUpdated;
             _client.SlashCommandExecuted += _client_SlashCommandExecuted;
+            _client.SelectMenuExecuted += _client_SelectMenuExecuted;
+        }
+
+        private async Task _client_SelectMenuExecuted(SocketMessageComponent messageComp)
+        {
+            foreach(var module in modules)
+            {
+                await module.OnSelectMenuExecutedAsync(messageComp);
+            }
         }
 
         private async Task _client_SlashCommandExecuted(SocketSlashCommand arg)
@@ -48,6 +101,7 @@ namespace Custodian.Bot
             {
                 if(commands.TryGetValue(arg.CommandName, out var command))
                 {
+                    await logger.LogAsync(LogLevel.INFO, $"[{arg.Channel.Name}] [{arg.User.Username}] ran command: {arg.CommandName}");
                     await command.OnSlashCommandAsync(arg);
                 }
             }
@@ -55,96 +109,74 @@ namespace Custodian.Bot
 
         private async Task _client_Ready()
         {
-            List<SlashCommandBuilder> builders = new List<SlashCommandBuilder>();
-            foreach(var command in commands.Values)
+            try
             {
-                var builder = new SlashCommandBuilder();
-                builder.WithName(command.Command);
-                builder.WithDescription(command.Description);
-                builders.Add(builder);
-            }
+                List<SlashCommandBuilder> builders = new List<SlashCommandBuilder>();
+                foreach (var command in commands.Values)
+                {
+                    var builder = new SlashCommandBuilder();
+                    builder.WithName(command.Command);
+                    builder.WithDescription(command.Description);
+                    if (command.Options != null && command.Options.Count > 0)
+                    {
+                        foreach (var option in command.Options)
+                        {
+                            builder.AddOption(option.Name, option.Type, option.Description, option.IsRequired, option.IsDefault, option.IsAutoComplete);
+                        }
+                    }
+                    builders.Add(builder);
+                }
 
-            foreach(var guild in _client.Guilds)
-            {
-                foreach(var builder in builders)
+                var guild = _client.Guilds.First(g => g.Id == config.GuildId);
+
+                foreach (var builder in builders)
                 {
                     await guild.CreateApplicationCommandAsync(builder.Build());
                 }
-            }
 
-            Console.WriteLine(">> Bot ready for interaction.");
+                await RegisterModules();
+
+                await logger.LogAsync(LogLevel.INFO, ">> Bot ready for interaction.");
+            }
+            catch(Exception ex)
+            {
+                await logger.LogAsync(LogLevel.ERROR, ">> Bot failed to register commands to guilds with exception: ");
+                await logger.LogAsync(LogLevel.ERROR, ex.Message);
+            }
         }
 
         private async Task _client_UserVoiceStateUpdated(SocketUser arg1, SocketVoiceState arg2, SocketVoiceState arg3)
         {
-            var prevChannel = arg2.VoiceChannel;
-            var currChannel = arg3.VoiceChannel;
-
-            SocketGuild guild = null;
-
-            if(prevChannel != null)
+            foreach(var module in modules)
             {
-                guild = prevChannel.Guild;
+                await module.OnUserVoiceStateUpdated(arg1, arg2, arg3);
             }
-            else if(currChannel != null)
-            {
-                guild = currChannel.Guild;
-            }
-            else
-            {
-                Console.WriteLine(">> Failed to fetch guild in UserVoiceStateUpdated.");
-                return;
-            }
-
-            if(prevChannel != null &&
-                trackedChannels.Contains(prevChannel.Id) &&
-                prevChannel.ConnectedUsers.Count == 0)
-            {
-                Console.WriteLine($"No users left in channel '{prevChannel.Name}', deleting..");
-                trackedChannels.Remove(prevChannel.Id);
-                await prevChannel.DeleteAsync();
-                Console.WriteLine(">> Deleted channel.");
-            }
-
-            if(currChannel == null)
-            {
-                return;
-            }
-
-            if (currChannel.Id != _config.GuildConfigs[guild.Id].DynamicVoiceChannelId)
-            {
-                return;
-            }
-
-            Console.WriteLine("Detected user in voice channel, moving them to new channel.");
-
-            int currentChannelCount = trackedChannels.Count + 1;
-            var newChannel = await currChannel.Guild.CreateVoiceChannelAsync($"Voice Channel {currentChannelCount}", p =>
-            {
-                p.CategoryId = _config.GuildConfigs[guild.Id].DynamicVoiceCategoryId;
-            });
-
-            trackedChannels.Add(newChannel.Id);
-            
-            await currChannel.Guild.MoveAsync(arg1 as SocketGuildUser, newChannel);
         }
 
-        private async Task _client_MessageReceived(SocketMessage arg)
+        private async Task _client_MessageReceived(SocketMessage socketMessage)
         {
-            if(!arg.Author.IsBot)
+            if (socketMessage.Author.IsBot)
             {
-                Console.WriteLine($"[{arg.Channel.Name}] [{arg.Author.Username}]: {arg.CleanContent}");
+                return;
+            }
+
+            if(socketMessage.Channel is SocketDMChannel dmChannel)
+            {
+                foreach (var module in modules)
+                {
+                    await module.OnDirectMessageReceivedAsync(socketMessage);
+                }
             }
         }
 
         public async Task StartAsync()
         {
-            Console.WriteLine("Logging in..");
-            await _client.LoginAsync(Discord.TokenType.Bot, _config.Token);
-            Console.WriteLine(">> Logged in.");
-            Console.WriteLine("Starting bot..");
+            await logger.LogAsync(LogLevel.INFO, "Logging in..");
+            await _client.LoginAsync(Discord.TokenType.Bot, config.Token);
+            await logger.LogAsync(LogLevel.INFO, ">> Logged in.");
+            await logger.LogAsync(LogLevel.INFO, "Starting bot..");
             await _client.StartAsync();
-            Console.WriteLine(">> Bot started.");
+            await logger.LogAsync(LogLevel.INFO, ">> Bot started.");
 
             await Task.Delay(Timeout.Infinite);
         }

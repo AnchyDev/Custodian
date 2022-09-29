@@ -12,6 +12,7 @@ namespace Custodian.Commands
     {
         string Command { get; }
         string Description { get; }
+        List<CommandOption> Options { get; }
         Task OnSlashCommandAsync(SocketSlashCommand command);
     }
 }

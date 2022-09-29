@@ -12,6 +12,8 @@ namespace Custodian.Commands
         public string Command { get => "cat"; }
         public string Description { get => "Retrieves a picture of a cat."; }
 
+        public List<CommandOption> Options { get => null; }
+
         private HttpClient _httpClient;
 
         public SlashCommandCat()
