@@ -12,7 +12,7 @@ namespace Custodian.Shared.Configuration
         /// <param name="file">The path to the config.json</param>
         /// <param name="createIfNotExist">If the config does not exist, create it.</param>
         /// <returns>The deserialized config.</returns>
-        public async Task<T?> GetAsync<T>(string file, bool createIfNotExist = true) where T : new()
+        public static async Task<T?> GetAsync<T>(string file, bool createIfNotExist = true) where T : new()
         {
             var path = Path.GetDirectoryName(file);
             var fileName = Path.GetFileName(file);
