@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Custodian.Shared.Module
+namespace Custodian.Shared.Modules
 {
     public abstract class Module
     {
