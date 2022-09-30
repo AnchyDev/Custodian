@@ -25,6 +25,22 @@ namespace Custodian
                 return;
             }
 
+            var services = ConfigureServices(config);
+            var serviceProvider = services?.BuildServiceProvider();
+
+            var modules = serviceProvider?.GetService<List<IModule>>();
+            var _modules = serviceProvider?.GetServices<IModule>();
+            modules?.AddRange(_modules);
+
+            var bot = serviceProvider?.GetService<BotCustodian>();
+            if(await bot.SetupAsync())
+            {
+                await bot.StartAsync();
+            }
+        }
+
+        private IServiceCollection? ConfigureServices(BotConfig config)
+        {
             var logger = new LoggerConsole();
             logger.LogLevel = config.LogLevel;
 
@@ -50,16 +66,7 @@ namespace Custodian
                 .AddSingleton<DiscordSocketClient>(client)
                 .AddSingleton<HttpClient>();
 
-            var serviceProvider = services.BuildServiceProvider();
-
-            var _modules = serviceProvider.GetServices<IModule>();
-            modules.AddRange(_modules);
-
-            var bot = serviceProvider.GetService<BotCustodian>();
-            if(await bot.SetupAsync())
-            {
-                await bot.StartAsync();
-            }
+            return services;
         }
 
         private async Task<BotConfig?> LoadConfig()
