@@ -22,12 +22,14 @@ namespace Custodian.Bot
         private HttpClient httpClient;
 
         public BotCustodian(BotConfig config, ILogger logger, 
-            DiscordSocketClient client, HttpClient httpClient)
+            DiscordSocketClient client, HttpClient httpClient,
+            List<IModule> modules)
         {
             this.config = config;
             this.logger = logger;
             this.client = client;
             this.httpClient = httpClient;
+            this.modules = modules;
         }
 
         public async Task<bool> SetupAsync()
@@ -53,36 +55,11 @@ namespace Custodian.Bot
             await logger.LogAsync(LogLevel.INFO, "Subscribing to 'ReadyMenuExecuted' event.");
             client.SelectMenuExecuted += _client_SelectMenuExecuted;
 
-            await RegisterModules();
-
-            return true;
-        }
-
-        private async Task SetStatus()
-        {
-            await client.SetStatusAsync(UserStatus.Online);
-            await client.SetActivityAsync(new Game(" for interactions.", ActivityType.Watching, ActivityProperties.None));
-        }
-
-        private async Task RegisterModules()
-        {
-            modules = new List<IModule>();
-
-            modules.Add(new DirectMessageModule(guild, logger));
-            modules.Add(new DynamicVoiceChannelModule(guild, logger));
-
-            if(modules.Count < 1)
-            {
-                return;
-            }
-
-            await logger.LogAsync(LogLevel.INFO, $"Registering '{modules.Count}' module(s).");
-
             foreach (var module in modules)
             {
                 var result = await module.LoadConfig();
 
-                if(result)
+                if (result)
                 {
                     await logger.LogAsync(LogLevel.INFO, $">> Loaded module '{module.Name}'.");
                 }
@@ -92,6 +69,14 @@ namespace Custodian.Bot
                     modules.Remove(module);
                 }
             }
+
+            return true;
+        }
+
+        private async Task SetStatus()
+        {
+            await client.SetStatusAsync(UserStatus.Online);
+            await client.SetActivityAsync(new Game(" for interactions.", ActivityType.Watching, ActivityProperties.None));
         }
 
         private async Task RegisterCommands()

@@ -1,4 +1,5 @@
-﻿using Custodian.Logging;
+﻿using Custodian.Config;
+using Custodian.Logging;
 using Discord.WebSocket;
 using System;
 using System.Collections.Generic;
@@ -24,13 +25,15 @@ namespace Custodian.Modules
         public override string Description { get => "Allows users to create their own voice channels by joining a specific channel."; }
 
         private DynamicVoiceChannelConfig config;
-        private SocketGuild guild;
+        private BotConfig _config;
+        private DiscordSocketClient client;
         private ILogger logger;
         private List<ulong> trackedChannels;
 
-        public DynamicVoiceChannelModule(SocketGuild guild, ILogger logger)
+        public DynamicVoiceChannelModule(DiscordSocketClient client, BotConfig _config, ILogger logger)
         {
-            this.guild = guild;
+            this.client = client;
+            this._config = _config;
             this.logger = logger;
             trackedChannels = new List<ulong>();
         }

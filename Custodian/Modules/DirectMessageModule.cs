@@ -1,4 +1,5 @@
-﻿using Custodian.Logging;
+﻿using Custodian.Config;
+using Custodian.Logging;
 using Discord;
 using Discord.WebSocket;
 
@@ -19,13 +20,15 @@ namespace Custodian.Modules
         public override string Description { get => "Allows users to complete actions in a direct message channel with the bot."; }
 
         private ReportConfig config;
-        private SocketGuild guild;
+        private BotConfig _config;
+        private DiscordSocketClient client;
         private ILogger logger;
         private List<ulong> usersReporting;
 
-        public DirectMessageModule(SocketGuild guild, ILogger logger)
+        public DirectMessageModule(DiscordSocketClient client, BotConfig _config, ILogger logger)
         {
-            this.guild = guild;
+            this.client = client;
+            this._config = _config;
             this.logger = logger;
             usersReporting = new List<ulong>();
         }
@@ -51,6 +54,13 @@ namespace Custodian.Modules
             {
                 usersReporting.Remove(message.Author.Id);
                 await message.Channel.SendMessageAsync(text: "Your message has been logged.");
+
+                var guild = client.Guilds.FirstOrDefault(g => g.Id == _config.GuildId);
+                if(guild == null)
+                {
+                    await logger.LogAsync(LogLevel.ERROR, "[DirectMessageModule] Guild was null!");
+                    return;
+                }
 
                 var forum = guild.GetForumChannel(config.ReportForumChannelId);
                 var threads = await forum.GetActiveThreadsAsync();

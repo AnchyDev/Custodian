@@ -1,6 +1,7 @@
 ﻿using Custodian.Bot;
 using Custodian.Config;
 using Custodian.Logging;
+using Custodian.Modules;
 using Discord;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,16 +35,25 @@ namespace Custodian
 
             var client = new DiscordSocketClient(clientConfig);
 
-            var serviceProvider = new ServiceCollection()
+            var modules = new List<IModule>();
+
+            var services = new ServiceCollection()
                 .AddSingleton<ILogger, LoggerConsole>(f =>
                 {
                     return logger;
                 })
                 .AddSingleton<BotConfig>(config)
                 .AddSingleton<BotCustodian>()
+                .AddSingleton<List<IModule>>(modules)
+                .AddSingleton<IModule, DirectMessageModule>()
+                .AddSingleton<IModule, DynamicVoiceChannelModule>()
                 .AddSingleton<DiscordSocketClient>(client)
-                .AddSingleton<HttpClient>()
-                .BuildServiceProvider();
+                .AddSingleton<HttpClient>();
+
+            var serviceProvider = services.BuildServiceProvider();
+
+            var _modules = serviceProvider.GetServices<IModule>();
+            modules.AddRange(_modules);
 
             var bot = serviceProvider.GetService<BotCustodian>();
             if(await bot.SetupAsync())
