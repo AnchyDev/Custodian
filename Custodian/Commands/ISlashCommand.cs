@@ -1,4 +1,4 @@
-﻿using Custodian.Config;
+﻿using Custodian.Models;
 using Discord.WebSocket;
 using System;
 using System.Collections.Generic;

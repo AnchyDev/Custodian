@@ -1,5 +1,5 @@
 ﻿using Custodian.Commands;
-using Custodian.Config;
+using Custodian.Models;
 using Custodian.Logging;
 using Custodian.Modules;
 

@@ -1,4 +1,4 @@
-﻿using Custodian.Config;
+﻿using Custodian.Models;
 using Custodian.Logging;
 using Discord.WebSocket;
 using System;

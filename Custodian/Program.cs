@@ -1,5 +1,5 @@
 ﻿using Custodian.Bot;
-using Custodian.Config;
+using Custodian.Models;
 using Custodian.Logging;
 using Custodian.Modules;
 using Discord;
@@ -19,7 +19,8 @@ namespace Custodian
 
         public async Task StartAsync()
         {
-            var config = await LoadConfig();
+            //var config = await LoadConfig();
+            var config = await Custodian.Shared.Configuration.Config.GetAsync<BotConfig>(@"./config/config.json", true);
             if (config == null)
             {
                 return;

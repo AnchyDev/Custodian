@@ -6,7 +6,7 @@ using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
-namespace Custodian.Config
+namespace Custodian.Models
 {
     public class BotConfig
     {
