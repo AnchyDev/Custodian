@@ -16,9 +16,9 @@ namespace Custodian.Commands
 
         private HttpClient _httpClient;
 
-        public SlashCommandCat()
+        public SlashCommandCat(HttpClient httpClient)
         {
-            _httpClient = new HttpClient();
+            _httpClient = httpClient;
         }
 
         public async Task OnSlashCommandAsync(SocketSlashCommand command)

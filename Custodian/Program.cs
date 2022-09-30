@@ -1,6 +1,7 @@
 ﻿using Custodian.Bot;
 using Custodian.Config;
 using Custodian.Logging;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Text.Json;
 
@@ -16,14 +17,26 @@ namespace Custodian
         public async Task StartAsync()
         {
             var config = await LoadConfig();
-            if(config == null)
+            if (config == null)
             {
                 return;
             }
+
             var logger = new LoggerConsole();
             logger.LogLevel = config.LogLevel;
-            var bot = new BotCustodian(config, logger);
-            if (await bot.SetupAsync())
+
+            var serviceProvider = new ServiceCollection()
+                .AddSingleton<ILogger, LoggerConsole>(f =>
+                {
+                    return logger;
+                })
+                .AddSingleton<BotConfig>(config)
+                .AddSingleton<BotCustodian>()
+                .AddSingleton<HttpClient>()
+                .BuildServiceProvider();
+
+            var bot = serviceProvider.GetService<BotCustodian>();
+            if(await bot.SetupAsync())
             {
                 await bot.StartAsync();
             }

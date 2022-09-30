@@ -19,11 +19,13 @@ namespace Custodian.Bot
         private ILogger logger;
 
         private SocketGuild? guild;
+        private HttpClient httpClient;
 
-        public BotCustodian(BotConfig config, ILogger logger)
+        public BotCustodian(BotConfig config, ILogger logger, HttpClient httpClient)
         {
             this.config = config;
             this.logger = logger;
+            this.httpClient = httpClient;
         }
 
         public async Task<bool> SetupAsync()
@@ -101,7 +103,7 @@ namespace Custodian.Bot
         {
             commands = new Dictionary<string, ISlashCommand>();
 
-            var cmdCat = new SlashCommandCat();
+            var cmdCat = new SlashCommandCat(httpClient);
             commands.Add(cmdCat.Command, cmdCat);
             
             //var cmdCompile = new SlashCommandCompile();
