@@ -1,6 +1,8 @@
 ﻿using Custodian.Bot;
 using Custodian.Config;
 using Custodian.Logging;
+using Discord;
+using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Text.Json;
@@ -25,6 +27,13 @@ namespace Custodian
             var logger = new LoggerConsole();
             logger.LogLevel = config.LogLevel;
 
+            var clientConfig = new DiscordSocketConfig()
+            {
+                GatewayIntents = GatewayIntents.All
+            };
+
+            var client = new DiscordSocketClient(clientConfig);
+
             var serviceProvider = new ServiceCollection()
                 .AddSingleton<ILogger, LoggerConsole>(f =>
                 {
@@ -32,6 +41,7 @@ namespace Custodian
                 })
                 .AddSingleton<BotConfig>(config)
                 .AddSingleton<BotCustodian>()
+                .AddSingleton<DiscordSocketClient>(client)
                 .AddSingleton<HttpClient>()
                 .BuildServiceProvider();
 

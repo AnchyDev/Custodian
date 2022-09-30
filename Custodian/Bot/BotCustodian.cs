@@ -21,22 +21,17 @@ namespace Custodian.Bot
         private SocketGuild? guild;
         private HttpClient httpClient;
 
-        public BotCustodian(BotConfig config, ILogger logger, HttpClient httpClient)
+        public BotCustodian(BotConfig config, ILogger logger, 
+            DiscordSocketClient client, HttpClient httpClient)
         {
             this.config = config;
             this.logger = logger;
+            this.client = client;
             this.httpClient = httpClient;
         }
 
         public async Task<bool> SetupAsync()
         {
-            var clientConfig = new DiscordSocketConfig()
-            {
-                GatewayIntents = GatewayIntents.All
-            };
-
-            client = new DiscordSocketClient(clientConfig);
-
             if(client == null)
             {
                 await logger.LogAsync(LogLevel.ERROR, ">> Discord Socket Client is null, exiting..");
