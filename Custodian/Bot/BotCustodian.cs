@@ -143,26 +143,18 @@ namespace Custodian.Bot
 
         private async Task _client_Ready()
         {
-            try
+            guild = client.Guilds.FirstOrDefault(g => g.Id == config.GuildId);
+
+            if (guild == null)
             {
-                guild = client.Guilds.FirstOrDefault(g => g.Id == config.GuildId);
-
-                if (guild == null)
-                {
-                    await logger.LogAsync(LogLevel.ERROR, ">> Guild is null, cannot continue..");
-                    return;
-                }
-
-                await RegisterCommands();
-                await SetStatus();
-
-                await logger.LogAsync(LogLevel.INFO, ">> Bot ready for interaction.");
+                await logger.LogAsync(LogLevel.ERROR, ">> Guild is null, cannot continue..");
+                return;
             }
-            catch(Exception ex)
-            {
-                await logger.LogAsync(LogLevel.ERROR, ">> Bot failed to register commands to guilds with exception: ");
-                await logger.LogAsync(LogLevel.ERROR, ex.Message);
-            }
+
+            await RegisterCommands();
+            await SetStatus();
+
+            await logger.LogAsync(LogLevel.INFO, ">> Bot ready for interaction.");
         }
 
         private async Task _client_UserVoiceStateUpdated(SocketUser arg1, SocketVoiceState arg2, SocketVoiceState arg3)
