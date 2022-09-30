@@ -15,4 +15,8 @@
     <PackageReference Include="System.CodeDom" Version="6.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Custodian.Shared\Custodian.Shared.csproj" />
+  </ItemGroup>
+
 </Project>
