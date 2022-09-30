@@ -1,7 +1,7 @@
 ﻿using System.IO;
 using System.Threading.Tasks;
 
-namespace Custodian.Shared.Config
+namespace Custodian.Shared.Configuration
 {
     public class Config
     {
