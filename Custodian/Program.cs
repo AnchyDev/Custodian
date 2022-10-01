@@ -7,6 +7,7 @@ using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Text.Json;
+using System.Reflection;
 
 namespace Custodian
 {
@@ -26,6 +27,8 @@ namespace Custodian
                 return;
             }
 
+            await LoadModules();
+
             var services = ConfigureServices(config);
             var serviceProvider = services?.BuildServiceProvider();
 
@@ -37,6 +40,69 @@ namespace Custodian
             if(await bot.SetupAsync())
             {
                 await bot.StartAsync();
+            }
+        }
+
+        private async Task LoadModules()
+        {
+            var modulesPath = "./modules";
+
+            if(!Directory.Exists(modulesPath))
+            {
+                Console.WriteLine($"'{modulesPath}' directory does not exist, creating..");
+                Directory.CreateDirectory(modulesPath);
+            }
+
+            var modules = Directory.GetFiles(modulesPath, "*.dll");
+
+            if(modules.Length < 1)
+            {
+                Console.WriteLine("No modules found.");
+                return;
+            }
+
+            List<Assembly> validModules = new List<Assembly>();
+
+            foreach(var module in modules)
+            {
+                var modulePath = Path.GetFullPath(module);
+                try
+                {
+                    var assembly = Assembly.LoadFile(modulePath);
+                    var types = assembly.GetTypes();
+
+                    if (types.Any(t => typeof(Custodian.Shared.Modules.Module).IsAssignableFrom(t)))
+                    {
+                        validModules.Add(assembly);
+                        continue;
+                    }
+                }
+                catch(Exception)
+                {
+                    continue;
+                }
+            }
+
+            if(validModules.Count < 1)
+            {
+                Console.WriteLine("No modules found.");
+                return;
+            }
+
+            Console.WriteLine($"Loading '{validModules.Count}' module(s)..");
+
+            foreach(var module in validModules)
+            {
+                var types = module.GetTypes();
+
+                foreach(var type in types)
+                {
+                    if(typeof(Custodian.Shared.Modules.Module).IsAssignableFrom(type))
+                    {
+                        var m = Activator.CreateInstance(type) as Shared.Modules.Module;
+                        Console.WriteLine($"Found '{m.Name}'");
+                    }
+                }
             }
         }
 

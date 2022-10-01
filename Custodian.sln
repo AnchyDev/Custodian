@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Custodian", "Custodian\Cust
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Custodian.Shared", "Custodian.Shared\Custodian.Shared.csproj", "{3DDE6596-52E1-4AAD-8482-B2A0F35160EA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Custodian.DirectMessage", "Custodian.DirectMessage\Custodian.DirectMessage.csproj", "{F2B7F19A-9CFD-4D19-9AB6-B9433529152D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{3DDE6596-52E1-4AAD-8482-B2A0F35160EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3DDE6596-52E1-4AAD-8482-B2A0F35160EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3DDE6596-52E1-4AAD-8482-B2A0F35160EA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F2B7F19A-9CFD-4D19-9AB6-B9433529152D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F2B7F19A-9CFD-4D19-9AB6-B9433529152D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F2B7F19A-9CFD-4D19-9AB6-B9433529152D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F2B7F19A-9CFD-4D19-9AB6-B9433529152D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
