@@ -1,6 +1,5 @@
 ﻿using Custodian.Bot;
 using Custodian.Models;
-using Custodian.Logging;
 using Custodian.Modules;
 using Discord;
 using Discord.WebSocket;
@@ -8,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Text.Json;
 using System.Reflection;
+using Custodian.Shared.Logging;
 
 namespace Custodian
 {
@@ -20,21 +20,57 @@ namespace Custodian
 
         public async Task StartAsync()
         {
-            //var config = await LoadConfig();
-            var config = await Custodian.Shared.Configuration.Config.GetAsync<BotConfig>(@"./config/config.json", true);
+            var config = await Shared.Configuration.Config.GetAsync<BotConfig>(@"./config/config.json", true);
+
             if (config == null)
             {
                 return;
             }
 
-            await LoadModules();
-
             var services = ConfigureServices(config);
             var serviceProvider = services?.BuildServiceProvider();
 
-            var modules = serviceProvider?.GetService<List<IModule>>();
-            var _modules = serviceProvider?.GetServices<IModule>();
-            modules?.AddRange(_modules);
+            ModuleHandler moduleHandler = serviceProvider?.GetService<ModuleHandler>();
+            int loadedModules = await moduleHandler.LoadAsync();
+
+            var logger = serviceProvider.GetService<ILogger>();
+
+            await logger.LogAsync(LogLevel.INFO, $"Found '{loadedModules}' modules, loading..");
+
+            foreach (var module in moduleHandler.Modules)
+            {
+                var members = module.GetType()
+                    .GetMembers(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
+                    .Where(m => m.IsDefined(typeof(Shared.Modules.ModuleImport)));
+
+                if(members != null && members.Count() > 0)
+                {
+                    foreach(var member in members)
+                    {
+                        await logger.LogAsync(LogLevel.INFO, $"Found member '{member.Name}' with attribute ModuleImport.");
+
+                        switch(member.MemberType)
+                        {
+                            case MemberTypes.Field:
+                                var fieldInfo = ((FieldInfo)member);
+                                var importObject = serviceProvider.GetService(fieldInfo.FieldType);
+                                if(importObject != null)
+                                {
+                                    await logger.LogAsync(LogLevel.INFO, $"Injecting object with type '{fieldInfo.FieldType}'..");
+                                    fieldInfo.SetValue(module, importObject);
+                                }
+                                else
+                                {
+                                    await logger.LogAsync(LogLevel.INFO, $"Import Object '{fieldInfo.FieldType}' was null.");
+                                }
+                                break;
+                        }
+                    }
+                }
+
+                await logger.LogAsync(LogLevel.INFO, $">> Loaded {module.Name}.");
+                await module.LoadAsync();
+            }
 
             var bot = serviceProvider?.GetService<BotCustodian>();
             if(await bot.SetupAsync())
@@ -43,72 +79,9 @@ namespace Custodian
             }
         }
 
-        private async Task LoadModules()
-        {
-            var modulesPath = "./modules";
-
-            if(!Directory.Exists(modulesPath))
-            {
-                Console.WriteLine($"'{modulesPath}' directory does not exist, creating..");
-                Directory.CreateDirectory(modulesPath);
-            }
-
-            var modules = Directory.GetFiles(modulesPath, "*.dll");
-
-            if(modules.Length < 1)
-            {
-                Console.WriteLine("No modules found.");
-                return;
-            }
-
-            List<Assembly> validModules = new List<Assembly>();
-
-            foreach(var module in modules)
-            {
-                var modulePath = Path.GetFullPath(module);
-                try
-                {
-                    var assembly = Assembly.LoadFile(modulePath);
-                    var types = assembly.GetTypes();
-
-                    if (types.Any(t => typeof(Custodian.Shared.Modules.Module).IsAssignableFrom(t)))
-                    {
-                        validModules.Add(assembly);
-                        continue;
-                    }
-                }
-                catch(Exception)
-                {
-                    continue;
-                }
-            }
-
-            if(validModules.Count < 1)
-            {
-                Console.WriteLine("No modules found.");
-                return;
-            }
-
-            Console.WriteLine($"Loading '{validModules.Count}' module(s)..");
-
-            foreach(var module in validModules)
-            {
-                var types = module.GetTypes();
-
-                foreach(var type in types)
-                {
-                    if(typeof(Custodian.Shared.Modules.Module).IsAssignableFrom(type))
-                    {
-                        var m = Activator.CreateInstance(type) as Shared.Modules.Module;
-                        Console.WriteLine($"Found '{m.Name}'");
-                    }
-                }
-            }
-        }
-
         private IServiceCollection? ConfigureServices(BotConfig config)
         {
-            var logger = new LoggerConsole();
+            var logger = new Shared.Logging.LoggerConsole();
             logger.LogLevel = config.LogLevel;
 
             var clientConfig = new DiscordSocketConfig()
@@ -117,21 +90,18 @@ namespace Custodian
             };
 
             var client = new DiscordSocketClient(clientConfig);
-
             var modules = new List<IModule>();
 
             var services = new ServiceCollection()
-                .AddSingleton<ILogger, LoggerConsole>(f =>
+                .AddSingleton<Shared.Logging.ILogger, Shared.Logging.LoggerConsole>(f =>
                 {
                     return logger;
                 })
                 .AddSingleton<BotConfig>(config)
                 .AddSingleton<BotCustodian>()
-                .AddSingleton<List<IModule>>(modules)
-                .AddSingleton<IModule, DirectMessageModule>()
-                .AddSingleton<IModule, DynamicVoiceChannelModule>()
                 .AddSingleton<DiscordSocketClient>(client)
-                .AddSingleton<HttpClient>();
+                .AddSingleton<HttpClient>()
+                .AddSingleton<ModuleHandler>();
 
             return services;
         }

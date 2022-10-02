@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Custodian.Logging
+namespace Custodian.Shared.Logging
 {
     public interface ILogger
     {

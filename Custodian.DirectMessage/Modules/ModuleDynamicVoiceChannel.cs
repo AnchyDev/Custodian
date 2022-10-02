@@ -1,59 +1,33 @@
-﻿using Custodian.Models;
-using Custodian.Shared.Logging;
+﻿using Custodian.Shared.Logging;
+using Custodian.Shared.Modules;
 using Discord.WebSocket;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 
-namespace Custodian.Modules
+namespace Custodian.DirectMessage.Modules
 {
-    public class DynamicVoiceChannelModule : IModule
+    public class ModuleDynamicVoiceChannel : Module
     {
-        class DynamicVoiceChannelConfig
-        {
-            [JsonPropertyName("DYNAMIC_VOICE_CHANNEL_ID")]
-            public ulong DynamicVoiceChannelId { get; set; }
-
-            [JsonPropertyName("DYNAMIC_VOICE_CATEGORY_ID")]
-            public ulong DynamicVoiceCategoryId { get; set; }
-        }
-
         public override string Name { get => "DynamicVoiceChannel"; }
         public override string Description { get => "Allows users to create their own voice channels by joining a specific channel."; }
 
-        private DynamicVoiceChannelConfig config;
-        private BotConfig _config;
-        private DiscordSocketClient client;
+        [ModuleImport]
         private ILogger logger;
+
+        private DynamicVoiceChannelConfig config;
+
         private List<ulong> trackedChannels;
 
-        public DynamicVoiceChannelModule(DiscordSocketClient client, BotConfig _config, ILogger logger)
+        public override async Task LoadAsync()
         {
-            this.client = client;
-            this._config = _config;
-            this.logger = logger;
-            trackedChannels = new List<ulong>();
+            await Task.Run(() =>
+            {
+                trackedChannels = new List<ulong>();
+            });
+
+            config = await this.GetConfig<DynamicVoiceChannelConfig>();
         }
 
-        public override async Task<bool> LoadConfig()
-        {
-            var _config = await GetConfig<DynamicVoiceChannelConfig>();
-            if (_config != null)
-            {
-                config = _config;
-                return true;
-            }
-            else
-            {
-                await logger.LogAsync(LogLevel.ERROR, "Failed to load config for module '{Name}'.");
-                return false;
-            }
-        }
-
-        public override async Task OnUserVoiceStateUpdated(SocketUser user, SocketVoiceState prevChannel, SocketVoiceState newChannel) 
+        public override async Task OnUserVoiceStateUpdated(SocketUser user, SocketVoiceState prevChannel, SocketVoiceState newChannel)
         {
             var prevVoice = prevChannel.VoiceChannel;
             var newVoice = newChannel.VoiceChannel;
@@ -89,6 +63,15 @@ namespace Custodian.Modules
             trackedChannels.Add(freshChannel.Id);
 
             await newVoice.Guild.MoveAsync(user as SocketGuildUser, freshChannel);
+        }
+
+        class DynamicVoiceChannelConfig
+        {
+            [JsonPropertyName("DYNAMIC_VOICE_CHANNEL_ID")]
+            public ulong DynamicVoiceChannelId { get; set; }
+
+            [JsonPropertyName("DYNAMIC_VOICE_CATEGORY_ID")]
+            public ulong DynamicVoiceCategoryId { get; set; }
         }
     }
 }

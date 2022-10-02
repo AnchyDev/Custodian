@@ -1,5 +1,5 @@
 ﻿using Custodian.Models;
-using Custodian.Logging;
+using Custodian.Shared.Logging;
 using Discord;
 using Discord.WebSocket;
 

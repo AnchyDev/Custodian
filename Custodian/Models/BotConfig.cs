@@ -1,4 +1,4 @@
-﻿using Custodian.Logging;
+﻿using Custodian.Shared.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;

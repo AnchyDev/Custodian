@@ -1,7 +1,7 @@
 ﻿using Custodian.Commands;
 using Custodian.Models;
-using Custodian.Logging;
 using Custodian.Modules;
+using Custodian.Shared.Logging;
 
 using Discord;
 using Discord.WebSocket;
@@ -14,22 +14,23 @@ namespace Custodian.Bot
         private BotConfig config;
         
         private Dictionary<string, ISlashCommand> commands;
-        private List<IModule> modules;
 
         private ILogger logger;
 
         private SocketGuild? guild;
         private HttpClient httpClient;
 
+        private ModuleHandler moduleHandler;
+
         public BotCustodian(BotConfig config, ILogger logger, 
             DiscordSocketClient client, HttpClient httpClient,
-            List<IModule> modules)
+            ModuleHandler moduleHandler)
         {
             this.config = config;
             this.logger = logger;
             this.client = client;
             this.httpClient = httpClient;
-            this.modules = modules;
+            this.moduleHandler = moduleHandler;
         }
 
         public async Task<bool> SetupAsync()
@@ -54,21 +55,6 @@ namespace Custodian.Bot
 
             await logger.LogAsync(LogLevel.INFO, "Subscribing to 'ReadyMenuExecuted' event.");
             client.SelectMenuExecuted += _client_SelectMenuExecuted;
-
-            foreach (var module in modules)
-            {
-                var result = await module.LoadConfig();
-
-                if (result)
-                {
-                    await logger.LogAsync(LogLevel.INFO, $">> Loaded module '{module.Name}'.");
-                }
-                else
-                {
-                    await logger.LogAsync(LogLevel.INFO, $">> Failed to load config, unloading module '{module.Name}'.");
-                    modules.Remove(module);
-                }
-            }
 
             return true;
         }
@@ -123,7 +109,7 @@ namespace Custodian.Bot
 
         private async Task _client_SelectMenuExecuted(SocketMessageComponent messageComp)
         {
-            foreach(var module in modules)
+            foreach(var module in moduleHandler.Modules)
             {
                 await module.OnSelectMenuExecutedAsync(messageComp);
             }
@@ -159,7 +145,7 @@ namespace Custodian.Bot
 
         private async Task _client_UserVoiceStateUpdated(SocketUser arg1, SocketVoiceState arg2, SocketVoiceState arg3)
         {
-            foreach(var module in modules)
+            foreach(var module in moduleHandler.Modules)
             {
                 await module.OnUserVoiceStateUpdated(arg1, arg2, arg3);
             }
@@ -174,7 +160,7 @@ namespace Custodian.Bot
 
             if(socketMessage.Channel is SocketDMChannel dmChannel)
             {
-                foreach (var module in modules)
+                foreach(var module in moduleHandler.Modules)
                 {
                     await module.OnDirectMessageReceivedAsync(socketMessage);
                 }
