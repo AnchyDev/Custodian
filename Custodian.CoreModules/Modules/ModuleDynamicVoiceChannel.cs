@@ -3,7 +3,7 @@ using Custodian.Shared.Modules;
 using Discord.WebSocket;
 using System.Text.Json.Serialization;
 
-namespace Custodian.DirectMessage.Modules
+namespace Custodian.CoreModules.Modules
 {
     public class ModuleDynamicVoiceChannel : Module
     {

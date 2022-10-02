@@ -4,7 +4,7 @@ using Discord;
 using Discord.WebSocket;
 using System.Text;
 
-namespace Custodian.DirectMessage.Modules
+namespace Custodian.CoreModules.Modules
 {
     public class ModuleDirectMessage : Module
     {
