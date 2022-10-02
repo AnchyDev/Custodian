@@ -4,10 +4,10 @@ using Custodian.Modules;
 using Discord;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
-using System;
 using System.Text.Json;
 using System.Reflection;
 using Custodian.Shared.Logging;
+using Custodian.Shared.Configuration;
 
 namespace Custodian
 {
@@ -15,73 +15,52 @@ namespace Custodian
     {
         public static async Task Main(string[] args)
         {
-            await new Program().StartAsync();
-        }
+            var config = await Config.GetAsync<BotConfig>(@"./config/config.json", true);
 
-        public async Task StartAsync()
-        {
-            var config = await Shared.Configuration.Config.GetAsync<BotConfig>(@"./config/config.json", true);
-
-            if (config == null)
+            if(config == null)
             {
-                return;
+                throw new NullReferenceException("Config is null!");
             }
 
-            var services = ConfigureServices(config);
-            var serviceProvider = services?.BuildServiceProvider();
+            var serviceCollection = ConfigureServices(config);
+            var serviceProvider = serviceCollection?.BuildServiceProvider();
 
-            ModuleHandler moduleHandler = serviceProvider?.GetService<ModuleHandler>();
-            int loadedModules = await moduleHandler.LoadAsync();
+            var moduleHandler = serviceProvider?.GetService<ModuleHandler>();
+            var logger = serviceProvider?.GetService<ILogger>();
 
-            var logger = serviceProvider.GetService<ILogger>();
-
-            await logger.LogAsync(LogLevel.INFO, $"Found '{loadedModules}' modules, loading..");
-
-            foreach (var module in moduleHandler.Modules)
+            if(moduleHandler == null)
             {
-                var members = module.GetType()
-                    .GetMembers(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
-                    .Where(m => m.IsDefined(typeof(Shared.Modules.ModuleImport)));
+                throw new NullReferenceException("ModuleHandler is null!");
+            }
 
-                if(members != null && members.Count() > 0)
+            int modulesLoaded = await moduleHandler.LoadAsync();
+
+            if(modulesLoaded > 0)
+            {
+                await logger.LogAsync(LogLevel.INFO, $"Loaded '{modulesLoaded}' module(s) from disk.");
+                await moduleHandler.InjectAsync(serviceProvider);
+
+                await logger.LogAsync(LogLevel.INFO, $"Calling module(s) LoadAsync..");
+                foreach(var module in moduleHandler.Modules)
                 {
-                    foreach(var member in members)
-                    {
-                        await logger.LogAsync(LogLevel.INFO, $"Found member '{member.Name}' with attribute ModuleImport.");
-
-                        switch(member.MemberType)
-                        {
-                            case MemberTypes.Field:
-                                var fieldInfo = ((FieldInfo)member);
-                                var importObject = serviceProvider.GetService(fieldInfo.FieldType);
-                                if(importObject != null)
-                                {
-                                    await logger.LogAsync(LogLevel.INFO, $"Injecting object with type '{fieldInfo.FieldType}'..");
-                                    fieldInfo.SetValue(module, importObject);
-                                }
-                                else
-                                {
-                                    await logger.LogAsync(LogLevel.INFO, $"Import Object '{fieldInfo.FieldType}' was null.");
-                                }
-                                break;
-                        }
-                    }
+                    await module.LoadAsync();
                 }
-
-                await logger.LogAsync(LogLevel.INFO, $">> Loaded {module.Name}.");
-                await module.LoadAsync();
+            }
+            else
+            {
+                await logger.LogAsync(LogLevel.INFO, $"No modules found.");
             }
 
             var bot = serviceProvider?.GetService<BotCustodian>();
-            if(await bot.SetupAsync())
+            if (await bot.SetupAsync())
             {
                 await bot.StartAsync();
             }
         }
 
-        private IServiceCollection? ConfigureServices(BotConfig config)
+        private static IServiceCollection? ConfigureServices(BotConfig config)
         {
-            var logger = new Shared.Logging.LoggerConsole();
+            var logger = new LoggerConsole();
             logger.LogLevel = config.LogLevel;
 
             var clientConfig = new DiscordSocketConfig()
@@ -93,7 +72,7 @@ namespace Custodian
             var modules = new List<IModule>();
 
             var services = new ServiceCollection()
-                .AddSingleton<Shared.Logging.ILogger, Shared.Logging.LoggerConsole>(f =>
+                .AddSingleton<ILogger, LoggerConsole>(f =>
                 {
                     return logger;
                 })

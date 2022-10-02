@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Custodian.Shared.Logging;
+using Microsoft.Extensions.DependencyInjection;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -105,6 +107,44 @@ namespace Custodian.Modules
 
                 return validAssemblies;
             });
+        }
+
+        public async Task InjectAsync(ServiceProvider serviceProvider)
+        {
+            var logger = serviceProvider.GetService<ILogger>();
+
+            foreach (var module in this.Modules)
+            {
+                await logger.LogAsync(LogLevel.INFO, $"Resolving members for '{module.Name}'..");
+                var members = module.GetType()
+                    .GetMembers(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
+                    .Where(m => m.IsDefined(typeof(Shared.Modules.ModuleImport)));
+
+                if (members != null && members.Count() > 0)
+                {
+                    foreach (var member in members)
+                    {
+                        await logger.LogAsync(LogLevel.INFO, $"Found member '{member.Name}' with attribute ModuleImport.");
+
+                        switch (member.MemberType)
+                        {
+                            case MemberTypes.Field:
+                                var fieldInfo = ((FieldInfo)member);
+                                var importObject = serviceProvider.GetService(fieldInfo.FieldType);
+                                if (importObject != null)
+                                {
+                                    await logger.LogAsync(LogLevel.INFO, $"Injecting object with type '{fieldInfo.FieldType}'..");
+                                    fieldInfo.SetValue(module, importObject);
+                                }
+                                else
+                                {
+                                    await logger.LogAsync(LogLevel.INFO, $"Import Object '{fieldInfo.FieldType}' was null.");
+                                }
+                                break;
+                        }
+                    }
+                }
+            }
         }
     }
 }
