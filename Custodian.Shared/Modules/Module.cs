@@ -8,6 +8,7 @@ namespace Custodian.Shared.Modules
         public abstract string Name { get; }
         public abstract string Description { get; }
 
+        public virtual Task OnClientReadyAsync(SocketGuild guild) => Task.CompletedTask;
         public virtual Task OnDirectMessageReceivedAsync(SocketMessage message) => Task.CompletedTask;
         public virtual Task OnSelectMenuExecutedAsync(SocketMessageComponent messageComp) => Task.CompletedTask;
         public virtual Task OnUserVoiceStateUpdated(SocketUser user, SocketVoiceState prevChannel, SocketVoiceState newChannel) => Task.CompletedTask;

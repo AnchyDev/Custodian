@@ -140,6 +140,11 @@ namespace Custodian.Bot
             await RegisterCommands();
             await SetStatus();
 
+            foreach(var module in moduleHandler.Modules)
+            {
+                await module.OnClientReadyAsync(guild);
+            }
+
             await logger.LogAsync(LogLevel.INFO, ">> Bot ready for interaction.");
         }
 

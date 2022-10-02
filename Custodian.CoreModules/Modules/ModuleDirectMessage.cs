@@ -3,6 +3,7 @@ using Custodian.Shared.Modules;
 using Discord;
 using Discord.WebSocket;
 using System.Text;
+using System.Text.Json.Serialization;
 
 namespace Custodian.CoreModules.Modules
 {
@@ -14,6 +15,10 @@ namespace Custodian.CoreModules.Modules
         [ModuleImport]
         private ILogger logger;
 
+        private SocketGuild guild;
+
+        private DirectMessageConfig config;
+
         private List<ulong>? usersReporting;
 
         public override async Task LoadAsync()
@@ -22,17 +27,22 @@ namespace Custodian.CoreModules.Modules
             {
                 usersReporting = new List<ulong>();
             });
+
+            config = await this.GetConfig<DirectMessageConfig>();
+        }
+
+        public override async Task OnClientReadyAsync(SocketGuild guild)
+        {
+            this.guild = guild;
         }
 
         public override async Task OnDirectMessageReceivedAsync(SocketMessage message)
         {
-            await logger.LogAsync(LogLevel.INFO, "OnDirectMessageReceivedAsync from " + Name);
-            /*if (usersReporting.Contains(message.Author.Id))
+            if (usersReporting.Contains(message.Author.Id))
             {
                 usersReporting.Remove(message.Author.Id);
                 await message.Channel.SendMessageAsync(text: "Your message has been logged.");
 
-                var guild = client.Guilds.FirstOrDefault(g => g.Id == _config.GuildId);
                 if (guild == null)
                 {
                     await logger.LogAsync(LogLevel.ERROR, "[DirectMessageModule] Guild was null!");
@@ -62,13 +72,12 @@ namespace Custodian.CoreModules.Modules
 
             await PromptMessage("Hi! I am the Custodian for the TechSpace Discord.",
                     "Please select an option from the widgets below to continue.",
-                    message.Channel);*/
+                    message.Channel);
         }
 
         public override async Task OnSelectMenuExecutedAsync(SocketMessageComponent messageComp)
         {
-            await logger.LogAsync(LogLevel.INFO, "OnSelectMenuExecutedAsync from " + Name);
-            /*await messageComp.DeferAsync();
+            await messageComp.DeferAsync();
 
             if (messageComp.Data.CustomId == "menu-1" && messageComp.Data.Values.First() == "opt-a")
             {
@@ -78,7 +87,7 @@ namespace Custodian.CoreModules.Modules
                 {
                     usersReporting.Add(messageComp.User.Id);
                 }
-            }*/
+            }
         }
 
 
@@ -99,5 +108,12 @@ namespace Custodian.CoreModules.Modules
 
             await channel.SendMessageAsync(text: sb.ToString(), components: compBuilder.Build());
         }
+
+        class DirectMessageConfig
+        {
+            [JsonPropertyName("REPORT_FORUM_CHANNEL_ID")]
+            public ulong ReportForumChannelId { get; set; }
+        }
+
     }
 }
