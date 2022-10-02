@@ -133,7 +133,7 @@ namespace Custodian.Modules
                                 var importObject = serviceProvider.GetService(fieldInfo.FieldType);
                                 if (importObject != null)
                                 {
-                                    await logger.LogAsync(LogLevel.INFO, $"Injecting object with type '{fieldInfo.FieldType}'..");
+                                    await logger.LogAsync(LogLevel.INFO, $"Injecting field with type '{fieldInfo.FieldType}'..");
                                     fieldInfo.SetValue(module, importObject);
                                 }
                                 else
