@@ -69,7 +69,6 @@ namespace Custodian
             };
 
             var client = new DiscordSocketClient(clientConfig);
-            var modules = new List<IModule>();
 
             var services = new ServiceCollection()
                 .AddSingleton<ILogger, LoggerConsole>(f =>
