@@ -1,4 +1,5 @@
-﻿using Discord.WebSocket;
+﻿using Custodian.Shared.Configuration;
+using Discord.WebSocket;
 using System.Text.Json;
 
 namespace Custodian.Shared.Modules
@@ -21,23 +22,7 @@ namespace Custodian.Shared.Modules
             string config = @$"{Name}.config.json";
             string fullPath = Path.Combine(path, config);
 
-            if (!Directory.Exists(path))
-            {
-                Directory.CreateDirectory(path);
-            }
-
-            if (!File.Exists(fullPath))
-            {
-                using (var fs = new FileStream(fullPath, FileMode.OpenOrCreate, FileAccess.ReadWrite))
-                {
-                    await JsonSerializer.SerializeAsync<T>(fs, new T());
-                }
-            }
-
-            using (var fs = new FileStream(fullPath, FileMode.OpenOrCreate, FileAccess.ReadWrite))
-            {
-                return await JsonSerializer.DeserializeAsync<T>(fs);
-            }
+            return await Config.GetAsync<T>(fullPath, true);
         }
     }
 }
