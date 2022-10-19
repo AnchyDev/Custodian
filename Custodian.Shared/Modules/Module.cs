@@ -12,7 +12,7 @@ namespace Custodian.Shared.Modules
         public virtual Task OnClientReadyAsync(SocketGuild guild) => Task.CompletedTask;
         public virtual Task OnDirectMessageReceivedAsync(SocketMessage message) => Task.CompletedTask;
         public virtual Task OnSelectMenuExecutedAsync(SocketMessageComponent messageComp) => Task.CompletedTask;
-        public virtual Task OnUserVoiceStateUpdated(SocketUser user, SocketVoiceState prevChannel, SocketVoiceState newChannel) => Task.CompletedTask;
+        public virtual Task OnUserVoiceStateUpdatedAsync(SocketUser user, SocketVoiceState prevChannel, SocketVoiceState newChannel) => Task.CompletedTask;
         public virtual Task<bool> LoadConfig() => Task.FromResult<bool>(true);
         public virtual async Task LoadAsync() => await Task.CompletedTask;
 

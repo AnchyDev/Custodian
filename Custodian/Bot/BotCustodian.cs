@@ -152,7 +152,7 @@ namespace Custodian.Bot
         {
             foreach(var module in moduleHandler.Modules)
             {
-                await module.OnUserVoiceStateUpdated(arg1, arg2, arg3);
+                await module.OnUserVoiceStateUpdatedAsync(arg1, arg2, arg3);
             }
         }
 

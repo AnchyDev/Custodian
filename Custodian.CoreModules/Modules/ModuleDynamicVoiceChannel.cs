@@ -27,7 +27,7 @@ namespace Custodian.CoreModules.Modules
             config = await this.GetConfig<DynamicVoiceChannelConfig>();
         }
 
-        public override async Task OnUserVoiceStateUpdated(SocketUser user, SocketVoiceState prevChannel, SocketVoiceState newChannel)
+        public override async Task OnUserVoiceStateUpdatedAsync(SocketUser user, SocketVoiceState prevChannel, SocketVoiceState newChannel)
         {
             var prevVoice = prevChannel.VoiceChannel;
             var newVoice = newChannel.VoiceChannel;
